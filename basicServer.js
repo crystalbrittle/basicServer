@@ -1,19 +1,33 @@
 //
+// VERSION 2.1!
+//
 // run like this:
 //
 // > node myserver.js
 //
 
+process.on('uncaughtException', function(err) {
+  console.log(err)
+})
+
 
 var DONTCACHE = true;
 
-var PORT = process.argv[2] || "8765";
+var PORT = process.argv[2]
+if(!PORT || isNaN(PORT)) PORT = "44440";
 PORT = parseInt(PORT);
+
+/// var CWD = process.argv[3];
+/// if(CWD){
+///   process.chdir(CWD);
+/// }
+/// console.log("== == CWD is now "+process.cwd() );
 
 console.log("== == == == == == == == ==\n"+
             "basicServer on port "+PORT+" ...");
 
 const http = require("http");
+const PROTOCOL = "HTTP";
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
@@ -36,6 +50,7 @@ const mimeTypes = {
   ".less"  : "text/css",
   ".wav"   : "audio/wav",
   ".ogg"   : "audio/ogg",
+  ".mp3"   : "audio/mp3",
 
   ".vilmonicomponent":"bludgeonsoft/addon",
   ".jsx"   : "bludgeonsoft/jsx",
@@ -57,8 +72,17 @@ try{
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-  const parsedUrl = url.parse(req.url);
+  var parsedUrl;
+  try {
+    const baseURL =  PROTOCOL + '://' + req.headers.host + '/';
+    parsedUrl = new URL(req.url, baseURL);
+  } catch (error) {
+    console.log("== == == == "+( error ) );//
+    parsedUrl = url.parse(req.url);
+  }
+
   let pathName = parsedUrl.pathname;
+  pathName = decodeURIComponent(pathName);
   let ext = path.extname(pathName);
 
   // To handle URLs with trailing "/" by removing aforementioned "/"
@@ -83,97 +107,96 @@ try{
   const filePath = path.join(process.cwd(), pathName);
 
   // Check if the requested asset exists on the server
-  fs.exists(filePath, function (exists, err) {
-    if (!exists) {
-      console.log("File does not exist: " + pathName)
-      res.writeHead(404, {"Content-Type": "text/plain"})
-      res.write("404 Not Found")
-      res.end()
-      return
-    }
+  var exists = fs.existsSync(filePath);
+  if (!exists) {
+    console.log("File does not exist: " + pathName)
+    res.writeHead(404, {"Content-Type": "text/plain"})
+    res.write("404 Not Found")
+    res.end()
+    return
+  }
 
-    // check mime types
-    if(!mimeTypes[ext]) {
-      fs.appendFileSync("missingMimeTypes.txt", ext+"\n", 'utf8');
-      console.log("Mime type does not exist: " + pathName)
-    }
-    // Otherwise, respond with a 200 OK status, 
-    // and add the correct content-type header
+  // check mime types
+  if(!mimeTypes[ext]) {
+    fs.appendFileSync("missingMimeTypes.txt", ext+"\n", 'utf8');
+    console.log("Mime type does not exist: " + pathName)
+  }
+  // Otherwise, respond with a 200 OK status, 
+  // and add the correct content-type header
 
-    //* * * * * * * * * * * * * * * * * * * JS (
-    if(ext==".jsx"){
-      ///try{        
-      ///  var fileText = fs.readFileSync(filePath);
-      ///  var result = eval( "(" + fileText + ")" );
-      ///  res.writeHead( result.status||200, result.header || {"Content-Type": "text/plain"} );
-      ///  res.write(result.body);
-      ///}
-      ///catch(e){
-      ///  res.writeHead(500, {"Content-Type": "text/plain"});
-      ///  res.write("500.1 Problam Found: "+e);
-      ///}
-      ///res.end();
+  //* * * * * * * * * * * * * * * * * * * JS (
+  if(ext==".jsx"){
+    ///try{        
+    ///  var fileText = fs.readFileSync(filePath);
+    ///  var result = eval( "(" + fileText + ")" );
+    ///  res.writeHead( result.status||200, result.header || {"Content-Type": "text/plain"} );
+    ///  res.write(result.body);
+    ///}
+    ///catch(e){
+    ///  res.writeHead(500, {"Content-Type": "text/plain"});
+    ///  res.write("500.1 Problam Found: "+e);
+    ///}
+    ///res.end();
 
-      //% throw $m(req,-1);
+    //% throw $m(req,-1);
 
 
-      var MODULE = MODULES[pathName];
-      var moduleError;
+    var MODULE = MODULES[pathName];
+    var moduleError;
 
-      // make new module
-      if(!MODULE){
-        /* EVAL version * /
-        var fileText = fs.readFileSync(filePath);
-        try{
-          MODULE = eval( "(" + fileText + ")" );
-          if(typeof MODULE != "function"){
-            throw( "module '"+filePath+"' is not a fn");
-          }
-          else{
-            MODULES[pathName] = MODULE;
-          }
+    // make new module
+    if(!MODULE){
+      /* EVAL version * /
+      var fileText = fs.readFileSync(filePath);
+      try{
+        MODULE = eval( "(" + fileText + ")" );
+        if(typeof MODULE != "function"){
+          throw( "module '"+filePath+"' is not a fn");
         }
-        catch(error){
-          MODULE = false;
-          moduleError = error;
+        else{
+          MODULES[pathName] = MODULE;
         }
-        /* REQUIRE version */
-        var MODULE = require(filePath);
+      }
+      catch(error){
+        MODULE = false;
+        moduleError = error;
+      }
+      /* REQUIRE version */
+      console.log("loading jsx: " + filePath)
+      MODULE = require(filePath);
 
-        /**/
-      }
-      // run module
-      if(MODULE){
-        MODULE(req, res, function(body, header, status){
-          res.writeHead( status||200, header||{"Content-Type": "text/plain"} );
-          res.write(body||"this page intentionally left blank");
-          res.end();
-        });
-      }
-      // module wrong
-      else if(MODULE!==false){
-        delete MODULES[pathName];
-        res.writeHead(500, {"Content-Type": "text/plain"});
-        res.write("500.1 Problam: No module for '"+pathName+"'");
-        res.end();
-      }
-      // eval error
-      else{
-        res.writeHead(500, {"Content-Type": "text/plain"});
-        res.write("500.2 Module problam found: "+moduleError);
-        res.end();
-      }
-      if(DONTCACHE) delete MODULES[pathName];
+      /**/
     }
-    //* * * * * * * * * * * * * * * * * * * * * )
+    // run module
+    if(MODULE){
+      MODULE(req, res, function(body, header, status){
+        res.writeHead( status||200, header||{"Content-Type": "text/plain"} );
+        res.write(body||"this page intentionally left blank");
+        res.end();
+      });
+    }
+    // module wrong
+    else if(MODULE!==false){
+      delete MODULES[pathName];
+      res.writeHead(500, {"Content-Type": "text/plain"});
+      res.write("500.1 Problam: No module for '"+pathName+"'");
+      res.end();
+    }
+    // eval error
     else{
-      // Read file from the computer and stream it to the response
-      res.writeHead(200, {"Content-Type": mimeTypes[ext]||"text/plain"})
-      const fileStream = fs.createReadStream(filePath);
-      fileStream.pipe(res);
+      res.writeHead(500, {"Content-Type": "text/plain"});
+      res.write("500.2 Module problam found: "+moduleError);
+      res.end();
     }
-  })
-
+    if(DONTCACHE) delete MODULES[pathName];
+  }
+  //* * * * * * * * * * * * * * * * * * * * * )
+  else{
+    // Read file from the computer and stream it to the response
+    res.writeHead(200, {"Content-Type": mimeTypes[ext]||"text/plain"})
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  }
 }
 catch(e){
   res.writeHead(500, {"Content-Type": "text/plain"})
