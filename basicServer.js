@@ -200,7 +200,7 @@ try{
 }
 catch(e){
   res.writeHead(500, {"Content-Type": "text/plain"})
-  res.write("500.2 Problam Found")
+  res.write("500.3 Problam Found "+e)
   res.end()
 }
 
