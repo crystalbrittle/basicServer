@@ -17,11 +17,11 @@ var PORT = process.argv[2]
 if(!PORT || isNaN(PORT)) PORT = "44440";
 PORT = parseInt(PORT);
 
-/// var CWD = process.argv[3];
-/// if(CWD){
-///   process.chdir(CWD);
-/// }
-/// console.log("== == CWD is now "+process.cwd() );
+var root = process.argv[3];
+if(root){
+  process.chdir(root)
+  console.log("(root is "+root+")");
+}
 
 console.log("== == == == == == == == ==\n"+
             "basicServer on port "+PORT+" ...");
