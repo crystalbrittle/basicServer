@@ -34,6 +34,7 @@ const url = require("url");
 const mimeTypes = {
   ".html"  : "text/html",
   ".js"    : "text/javascript",
+  ".mjs"   : "text/javascript",
   ".css"   : "text/css",
   ".ico"   : "image/x-icon",
   ".png"   : "image/png",
