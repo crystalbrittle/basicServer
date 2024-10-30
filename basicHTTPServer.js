@@ -16,7 +16,7 @@ process.on('uncaughtException', function(err) {
 var DONTCACHE = true;
 
 var PORT = process.argv[2]
-if(!PORT || isNaN(PORT)) PORT = "44440";
+if(!PORT || isNaN(PORT)) PORT = "44441";
 PORT = parseInt(PORT);
 
 var root = process.argv[3];
@@ -29,9 +29,9 @@ console.log("== == == == == == == == ==\n"+
             "basicServer v"+VERSION+" on port "+PORT+" ...");
 
 
-///const PROTOCOL = "HTTP";
+const PROTOCOL = "HTTP";
 // HTTPS will use the certs below
-const PROTOCOL = "HTTPS";
+///const PROTOCOL = "HTTPS";
 
 const http = require(PROTOCOL.toLocaleLowerCase());
 
@@ -67,8 +67,8 @@ const mimeTypes = {
 let options;
 if(PROTOCOL=="HTTPS"){
   options = {
-    key: fs.readFileSync(__dirname+'/basicServer-key.pem'),
-    cert: fs.readFileSync(__dirname+'/basicServer-cert.pem')
+    key: fs.readFileSync('basicServer-key.pem'),
+    cert: fs.readFileSync('basicServer-cert.pem')
   }
 };
 
